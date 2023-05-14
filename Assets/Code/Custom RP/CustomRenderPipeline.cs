@@ -9,16 +9,22 @@ namespace CustomRP
     {
         CameraRenderer renderer = new CameraRenderer();
 
-        public CustomRenderPipeline()
+        bool use_dynamic_batching;
+        bool use_gpu_instancing;
+
+        public CustomRenderPipeline(bool useSPRBatching, bool useDynamicBatching, bool useGPUInstancing)
         {
-            GraphicsSettings.useScriptableRenderPipelineBatching = true;
+            GraphicsSettings.useScriptableRenderPipelineBatching = useSPRBatching;
+
+            use_dynamic_batching = useDynamicBatching;
+            use_gpu_instancing = useGPUInstancing;
         }
 
         protected override void Render(ScriptableRenderContext context, Camera[] cameras)
         {
             foreach(var camera in cameras)
             {
-                renderer.Render(context, camera);
+                renderer.Render(context, camera, use_dynamic_batching, use_gpu_instancing);
             }
         }
     }
