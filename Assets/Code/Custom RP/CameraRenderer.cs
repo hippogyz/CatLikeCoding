@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using CustomRP.Light;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -9,6 +10,7 @@ namespace CustomRP
     {
         ScriptableRenderContext context;
         Camera camera;
+        Lighting lighting = new Lighting();
 
         const string cmd_name = "Render Camera";
         CommandBuffer cmd = new CommandBuffer { name = cmd_name };
@@ -16,6 +18,8 @@ namespace CustomRP
         CullingResults culling_results;
 
         static ShaderTagId unlit_shader_tag_id = new ShaderTagId("SRPDefaultUnlit");
+        static ShaderTagId lit_shader_tag_id = new ShaderTagId("CustomLit");
+
 
         public void Render(ScriptableRenderContext cont, Camera cam, 
             bool useDynamicBatching, bool useGPUInstancing)
@@ -23,18 +27,19 @@ namespace CustomRP
             context = cont;
             camera = cam;
 
-            PrepareBuffer();
-            PrepareForSceneWindow();
-            if (!Cull())
+            PrepareBuffer(); // EditorOnly: 预处理
+            PrepareForSceneWindow(); // EditorOnly: SceneWindow设置
+            if (!Cull()) // 裁剪
                 return;
 
-            Setup();
-            
-            DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
-            DrawUnsupportedShaders();
-            DrawGizmos();
+            Setup(); // 初始化相机
+            lighting.Setup(context, culling_results); // 设置光照
 
-            Submit();
+            DrawVisibleGeometry(useDynamicBatching, useGPUInstancing); // 绘制物体
+            DrawUnsupportedShaders(); // EditorOnly: 绘制不支持的shaders
+            DrawGizmos(); // EditorOnly: 绘制Gizmos
+
+            Submit(); // 执行上述设置
         }
 
         #region Render Process
@@ -74,6 +79,7 @@ namespace CustomRP
                 enableDynamicBatching = useDynamicBatching,
                 enableInstancing = useGPUInstancing
             };
+            drawing_settings.SetShaderPassName(1, lit_shader_tag_id);
             var filtering_settings = new FilteringSettings(RenderQueueRange.opaque);
 
             context.DrawRenderers(culling_results, ref drawing_settings, ref filtering_settings);
