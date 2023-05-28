@@ -3,6 +3,7 @@
 
 #include "ShaderLab/Common.hlsl"
 #include "ShaderLab/Surface.hlsl"
+#include "ShaderLab/Shadows.hlsl"
 #include "ShaderLab/Light.hlsl"
 #include "ShaderLab/BRDF.hlsl"
 #include "ShaderLab/Lighting.hlsl"
@@ -73,12 +74,15 @@ float4 LitPassFragment(Varyings IN) : SV_TARGET
 
 	// Lighting
 	Surface surface;
+	surface.position = IN.positionWS;
 	surface.normal = normalize(IN.normalWS);
 	surface.viewDirection = normalize(_WorldSpaceCameraPos - IN.positionWS);
+	surface.depth = -TransformWorldToView(IN.positionWS).z;
 	surface.color = base.xyz;
 	surface.alpha = base.a;
 	surface.metallic = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Metallic);
 	surface.smoothness = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
+	surface.dither = InterleavedGradientNoise(IN.positionCS.xy, 0);
 
 	#if defined(_PREMULTIPLY_ALPHA)
 		BRDF brdf = GetBRDF(surface, true);

@@ -14,4 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   useSPRBatching: 0
   useDynamicBatching: 0
-  useGPUInstancing: 1
+  useGPUInstancing: 0
+  shadowSettings:
+    maxDistance: 9.9
+    distanceFade: 0.402
+    directional:
+      atlasSize: 1024
+      filter: 3
+      cascadeInfo:
+        debug: 0
+        fade: 0.118
+        count: 4
+        ratio:
+        - 0.554
+        - 0.592
+        - 0.711
+        blendMode: 2

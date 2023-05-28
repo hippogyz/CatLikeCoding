@@ -1,4 +1,5 @@
-﻿using CustomRP.Light;
+﻿using CustomRP.CustomLight;
+using CustomRP.CustomShadow;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -22,33 +23,52 @@ namespace CustomRP
 
 
         public void Render(ScriptableRenderContext cont, Camera cam, 
-            bool useDynamicBatching, bool useGPUInstancing)
+            bool useDynamicBatching, bool useGPUInstancing,
+            ShadowSettings shadowSettings)
         {
             context = cont;
             camera = cam;
 
+            #region Editor
             PrepareBuffer(); // EditorOnly: 预处理
             PrepareForSceneWindow(); // EditorOnly: SceneWindow设置
-            if (!Cull()) // 裁剪
+            #endregion
+
+            if (!Cull(shadowSettings.maxDistance)) // 裁剪
                 return;
 
-            Setup(); // 初始化相机
-            lighting.Setup(context, culling_results); // 设置光照
+            #region Editor
+            Sample(true); // Editor Profile: 开始Sample
+            #endregion
+
+            lighting.Setup(context, culling_results, shadowSettings); // 设置光照和阴影 (阴影包含对context的操作)
+
+            Setup(); // 初始化相机 (注意放在阴影预处理之后，否则会被阴影中的写入操作影响)
 
             DrawVisibleGeometry(useDynamicBatching, useGPUInstancing); // 绘制物体
+
+            #region Editor
             DrawUnsupportedShaders(); // EditorOnly: 绘制不支持的shaders
             DrawGizmos(); // EditorOnly: 绘制Gizmos
+            #endregion
+
+            lighting.Cleanup();
+
+            #region Editor
+            Sample(false); // Editor Profile:  结束Sample
+            #endregion
 
             Submit(); // 执行上述设置
         }
 
-        #region Render Process
+        #region Camera Render Process
 
-        private bool Cull()
+        private bool Cull(float maxShadowDistance)
         {
             if (!camera.TryGetCullingParameters(out var cull_params)) 
                 return false;
 
+            cull_params.shadowDistance = Mathf.Min(maxShadowDistance, camera.farClipPlane);
             culling_results = context.Cull(ref cull_params);
             return true;
         }
@@ -63,7 +83,7 @@ namespace CustomRP
                 clearColor: clear_flag == CameraClearFlags.SolidColor, 
                 backgroundColor: clear_flag == CameraClearFlags.SolidColor ? camera.backgroundColor.linear : Color.clear);
             
-            cmd.BeginSample(SampleName);
+            // cmd.BeginSample(SampleName);
             ExecuteBuffer();
         }
 
@@ -84,11 +104,12 @@ namespace CustomRP
 
             context.DrawRenderers(culling_results, ref drawing_settings, ref filtering_settings);
 
+
             // Draw Skybox
             context.DrawSkybox(camera);
 
-            // Draw Transparent (透明对象不写入深度，需要在天空盒之后渲染，否则会被天空盒覆盖)
 
+            // Draw Transparent (透明对象不写入深度，需要在天空盒之后渲染，否则会被天空盒覆盖)
             sorting_settings.criteria = SortingCriteria.CommonTransparent;
             drawing_settings.sortingSettings = sorting_settings;
             filtering_settings.renderQueueRange = RenderQueueRange.transparent;
@@ -98,14 +119,25 @@ namespace CustomRP
 
         private void Submit()
         {
-            cmd.EndSample(SampleName);
-            ExecuteBuffer();
+            //cmd.EndSample(SampleName);
+            //ExecuteBuffer();
             context.Submit();
         }
 
         #endregion
 
         #region Utils
+
+        private void Sample(bool enable)
+        {
+            if (enable)
+                cmd.BeginSample(SampleName);
+            else
+                cmd.EndSample(SampleName);
+
+            ExecuteBuffer();
+        }
+
         private void ExecuteBuffer()
         {
             context.ExecuteCommandBuffer(cmd);

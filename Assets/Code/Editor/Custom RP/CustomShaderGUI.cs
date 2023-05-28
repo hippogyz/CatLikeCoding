@@ -47,6 +47,18 @@ namespace ShaderEditor
             set => SetProperty(Z_WRITE, value ? 1 : 0);
         }
 
+        ShadowMode Shadows
+        {
+            set
+            {
+                if(SetProperty(SHADOWS, (float)value))
+                {
+                    SetKeyword(SHADOWS_CLIP_KEYWORD, value == ShadowMode.Clip);
+                    SetKeyword(SHADOWS_DITHER_KEYWORD, value == ShadowMode.Dither);
+                }
+            }
+        }
+
         #endregion
 
         #region Property Name
@@ -62,10 +74,16 @@ namespace ShaderEditor
 
         const string Z_WRITE = "_ZWrite";
 
+        const string SHADOWS = "_Shadows";
+        const string SHADOWS_CLIP_KEYWORD = "_SHADOWS_CLIP";
+        const string SHADOWS_DITHER_KEYWORD = "_SHADOWS_DITHER";
+
         #endregion
 
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
         {
+            EditorGUI.BeginChangeCheck();
+
             base.OnGUI(materialEditor, properties);
 
             editor = materialEditor;
@@ -82,6 +100,25 @@ namespace ShaderEditor
                 FadePreset();
                 TransparentPreset();
             }
+
+            if(EditorGUI.EndChangeCheck())
+            {
+                SetShadowCasterPass();
+            }
+        }
+
+        private void SetShadowCasterPass()
+        {
+            MaterialProperty shadows = FindProperty(SHADOWS, properties);
+
+            if (shadows == null || shadows.hasMixedValue)
+                return;
+
+            bool enabled = shadows.floatValue < (float)ShadowMode.Off;
+            foreach(Material m in materials)
+            {
+                m.SetShaderPassEnabled("ShadowCaster", enabled);
+            }
         }
 
         #region Presets
@@ -96,6 +133,7 @@ namespace ShaderEditor
                 SrcBlend = BlendMode.One;
                 DstBlend = BlendMode.Zero;
                 ZWrite = true;
+                Shadows = ShadowMode.On;
             }
         }
 
@@ -109,6 +147,7 @@ namespace ShaderEditor
                 SrcBlend = BlendMode.One;
                 DstBlend = BlendMode.Zero;
                 ZWrite = true;
+                Shadows = ShadowMode.Clip;
             }
         }
 
@@ -122,6 +161,7 @@ namespace ShaderEditor
                 SrcBlend = BlendMode.SrcAlpha;
                 DstBlend = BlendMode.OneMinusSrcAlpha;
                 ZWrite = false;
+                Shadows = ShadowMode.Dither;
             }
         }
 
@@ -135,11 +175,11 @@ namespace ShaderEditor
                 SrcBlend = BlendMode.One;
                 DstBlend = BlendMode.OneMinusSrcAlpha;
                 ZWrite = false;
+                Shadows = ShadowMode.Dither;
             }
         }
 
         #endregion
-
 
         #region Utils
 
@@ -198,6 +238,15 @@ namespace ShaderEditor
         }
 
         #endregion
+
+        #endregion
+
+        #region Inner
+
+        enum ShadowMode
+        {
+            On, Clip, Dither, Off
+        }
 
         #endregion
     }

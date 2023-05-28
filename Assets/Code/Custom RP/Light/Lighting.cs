@@ -1,20 +1,21 @@
-﻿using System.Collections;
+﻿using CustomRP.CustomShadow;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace CustomRP.Light
+namespace CustomRP.CustomLight
 {
     public class Lighting
     {
         CullingResults culling_results;
+        Shadows shadows = new Shadows();
 
+        #region CommandBuffer
         const string BUFFER_NAME = "Lighting";
         CommandBuffer cmd = new CommandBuffer { name = BUFFER_NAME };
-
-        // static readonly int DIR_LIGHT_COLOR_ID = Shader.PropertyToID("_DirectionalLightColor");
-        // static readonly int DIR_LIGHT_DIRECTION_ID = Shader.PropertyToID("_DirectionalLightDirection");
+        #endregion
 
         #region Directional Lights
         const int MAX_DIR_LIGHT_COUNT = 4;
@@ -22,18 +23,28 @@ namespace CustomRP.Light
         static readonly int DIR_LIGHT_COUNT_ID = Shader.PropertyToID("_DirectionalLightCount");
         static readonly int DIR_LIGHT_COLORS_ID = Shader.PropertyToID("_DirectionalLightColors");
         static readonly int DIR_LIGHT_DIRECTIONS_ID = Shader.PropertyToID("_DirectionalLightDirections");
+        static readonly int DIR_LIGHT_SHADOW_DATA_ID = Shader.PropertyToID("_DirectionalLightShadowData");
 
         static Vector4[] dir_light_colors = new Vector4[MAX_DIR_LIGHT_COUNT];
         static Vector4[] dir_light_directions = new Vector4[MAX_DIR_LIGHT_COUNT];
+        static Vector4[] dir_light_shadow_data = new Vector4[MAX_DIR_LIGHT_COUNT];
+
+
+        // static readonly int DIR_LIGHT_COLOR_ID = Shader.PropertyToID("_DirectionalLightColor");
+        // static readonly int DIR_LIGHT_DIRECTION_ID = Shader.PropertyToID("_DirectionalLightDirection");
+
         #endregion
 
-        public void Setup(ScriptableRenderContext context, CullingResults cullingResults)
+        public void Setup(ScriptableRenderContext context, CullingResults cullingResults, 
+            ShadowSettings shadowSettings)
         {
             culling_results = cullingResults;
 
             cmd.BeginSample(BUFFER_NAME);
 
-            SetupLights();
+            shadows.Setup(context, cullingResults, shadowSettings); // init shadow
+            SetupLights(); // 包括传递光照信息给阴影
+            shadows.Render();
 
             cmd.EndSample(BUFFER_NAME);
 
@@ -41,11 +52,17 @@ namespace CustomRP.Light
             cmd.Clear();
         }
 
+
+        public void Cleanup()
+        {
+            shadows.Cleanup();
+        }
+
         private void SetupLights()
         {
             var visible_lights = culling_results.visibleLights;
 
-            int dir_light_count = 0;
+            var dir_light_count = 0;
             for (int i = 0; i < visible_lights.Length; ++i)
             {
                 var light = visible_lights[i];
@@ -55,23 +72,29 @@ namespace CustomRP.Light
                 {
                     if (dir_light_count < MAX_DIR_LIGHT_COUNT)
                     {
-                        SetupDirectionalLight(dir_light_count, ref light);
+                        SetupDirectionalLight(
+                            indexInDir: dir_light_count, 
+                            indexInCull: i, 
+                            ref light);
                         dir_light_count++;
                     }
                 }
-
             }
 
             // Directional
             cmd.SetGlobalInt(DIR_LIGHT_COUNT_ID, dir_light_count);
             cmd.SetGlobalVectorArray(DIR_LIGHT_COLORS_ID, dir_light_colors);
             cmd.SetGlobalVectorArray(DIR_LIGHT_DIRECTIONS_ID, dir_light_directions);
+            cmd.SetGlobalVectorArray(DIR_LIGHT_SHADOW_DATA_ID, dir_light_shadow_data);
         }
 
-        private void SetupDirectionalLight(int index, ref VisibleLight visibleLight)
+        private void SetupDirectionalLight(int indexInDir, int indexInCull, ref VisibleLight visibleLight)
         {
-            dir_light_colors[index] = visibleLight.finalColor;
-            dir_light_directions[index] = -visibleLight.localToWorldMatrix.GetColumn(2); // z-axis
+            dir_light_colors[indexInDir] = visibleLight.finalColor;
+            dir_light_directions[indexInDir] = -visibleLight.localToWorldMatrix.GetColumn(2); // z-axis
+
+            // shadows
+            dir_light_shadow_data[indexInDir] = shadows.ReserveDirectionalShadows(visibleLight.light, indexInCull);
         }
 
         //private void SetupDirectionalLight(CommandBuffer command)
