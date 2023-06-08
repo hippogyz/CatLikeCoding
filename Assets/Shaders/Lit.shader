@@ -26,6 +26,11 @@
     }
     SubShader
     {
+        HLSLINCLUDE
+        #include "ShaderLab/Common.hlsl"
+        #include "ShaderLab/LitInput.hlsl"
+        ENDHLSL
+
         Pass
         {
             Tags
@@ -50,6 +55,7 @@
             // Debug
             #pragma shader_feature _CASCADE_DEBUG
 
+            #pragma multi_compile _ LIGHTMAP_ON
             #pragma multi_compile_instancing
             #pragma vertex LitPassVertex
             #pragma fragment LitPassFragment

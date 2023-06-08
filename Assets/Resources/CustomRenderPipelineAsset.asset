@@ -16,17 +16,17 @@ MonoBehaviour:
   useDynamicBatching: 0
   useGPUInstancing: 0
   shadowSettings:
-    maxDistance: 9.9
-    distanceFade: 0.402
+    maxDistance: 40
+    distanceFade: 0.644
     directional:
-      atlasSize: 1024
+      atlasSize: 2048
       filter: 3
       cascadeInfo:
         debug: 0
-        fade: 0.118
+        fade: 0.524
         count: 4
         ratio:
-        - 0.554
-        - 0.592
-        - 0.711
-        blendMode: 2
+        - 0.399
+        - 0.57
+        - 0.709
+        blendMode: 1

@@ -1,19 +1,6 @@
 #ifndef SHADOW_CASTER_PASS_INCLUDED
 #define SHADOW_CASTER_PASS_INCLUDED
 
-#include "ShaderLab/Common.hlsl"
-
-TEXTURE2D(_BaseMap);
-SAMPLER(sampler_BaseMap);
-
-UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
-
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
-    UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
-
-UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
-
 struct Attributes{
     float3 positionOS : POSITION;
     float2 baseUV : TEXCOORD0;
@@ -43,8 +30,7 @@ Varyings ShadowCasterPassVertex(Attributes IN)
         OUT.positionCS.z = max(OUT.positionCS.z, OUT.positionCS.w * UNITY_NEAR_CLIP_VALUE);
     #endif
 
-    float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
-    OUT.baseUV = IN.baseUV * baseST.xy + baseST.zw;
+    OUT.baseUV = TransformBaseUV(IN.baseUV);
 
     return OUT;
 }
@@ -52,12 +38,10 @@ Varyings ShadowCasterPassVertex(Attributes IN)
 void ShadowCasterPassFragment(Varyings IN)
 {
     UNITY_SETUP_INSTANCE_ID(IN)
-    float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
-    float4 baseMap = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.baseUV);
-    float4 base = baseColor * baseMap;
+    float4 base = GetBaseColor(IN.baseUV);
 
     #if defined(_SHADOWS_CLIP)
-        float alphaCutoff = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff);
+        float alphaCutoff = GetCutoff();
         clip(base.a - alphaCutoff);
     #elif defined(_SHADOWS_DITHER)
         float dither = InterleavedGradientNoise(IN.positionCS.xy, 0);

@@ -2,13 +2,9 @@
 #define CUSTOM_COMMON_INCLUDED
 
 #ifdef REAL_IS_HALF
-
-#define real4 half4
-
+    #define real4 half4
 #else
-
-#define real4 float4
-
+    #define real4 float4
 #endif
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"

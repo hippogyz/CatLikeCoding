@@ -22,6 +22,11 @@
     }
     SubShader
     {
+        HLSLINCLUDE
+        #include "ShaderLab/Common.hlsl"
+        #include "ShaderLab/UnlitInput.hlsl"
+        ENDHLSL
+            
         Pass
         {
             Blend [_SrcBlend] [_DstBlend]

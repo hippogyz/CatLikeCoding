@@ -97,7 +97,10 @@ namespace CustomRP
             var drawing_settings = new DrawingSettings(unlit_shader_tag_id, sorting_settings)
             {
                 enableDynamicBatching = useDynamicBatching,
-                enableInstancing = useGPUInstancing
+                enableInstancing = useGPUInstancing,
+                perObjectData = PerObjectData.Lightmaps | PerObjectData.LightProbe
+                    | PerObjectData.LightProbeProxyVolume,
+
             };
             drawing_settings.SetShaderPassName(1, lit_shader_tag_id);
             var filtering_settings = new FilteringSettings(RenderQueueRange.opaque);

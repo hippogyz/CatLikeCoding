@@ -7,17 +7,17 @@
 //	float4 _BaseColor;
 //CBUFFER_END
 
-TEXTURE2D(_BaseMap);
-SAMPLER(sampler_BaseMap);
+// TEXTURE2D(_BaseMap);
+// SAMPLER(sampler_BaseMap);
 
-// Unity Per Material
-UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
+// // Unity Per Material
+// UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
 	
-	UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
-	UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
-	UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
+// 	UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
+// 	UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+// 	UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
 
-UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
+// UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
 struct Attributes {
 	float3 positionOS : POSITION;
@@ -41,8 +41,7 @@ Varyings UnlitPassVertex(Attributes IN)
 	float3 positionWS = TransformObjectToWorld(IN.positionOS.xyz);
 	OUT.positionCS = TransformWorldToHClip(positionWS);
 
-	float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
-	OUT.baseUV = IN.baseUV * baseST.xy + baseST.zw;
+	OUT.baseUV = TransformBaseUV(IN.baseUV);
 
 	return OUT;
 }
@@ -50,13 +49,11 @@ Varyings UnlitPassVertex(Attributes IN)
 float4 UnlitPassFragment(Varyings IN) : SV_TARGET
 {
 	UNITY_SETUP_INSTANCE_ID(IN);
-	float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
-	float4 baseMap = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.baseUV);
-	float4 color = baseColor * baseMap;
+	float4 color = GetBaseColor(IN.baseUV);
 	
 	// Discard frag while alpha is smaller than cutoff
 	#if defined(_CLIPPING)
-	float alphaCutoff = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff);
+	float alphaCutoff = GetCutoff();
 	clip(color.a - alphaCutoff);
 	#endif
 

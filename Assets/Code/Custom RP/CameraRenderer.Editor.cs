@@ -51,6 +51,7 @@ namespace CustomRP
             if (UnityEditor.Handles.ShouldRenderGizmos())
             {
                 context.DrawGizmos(camera, GizmoSubset.PreImageEffects);
+                // context.DrawWireOverlay(camera);
                 context.DrawGizmos(camera, GizmoSubset.PostImageEffects);
             }
 #endif
