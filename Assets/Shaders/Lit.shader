@@ -7,6 +7,8 @@
         _BaseColor("Color", Color) = (1.0, 1.0, 1.0, 1.0)
         _Metallic("Metallic", Range(0, 1)) = 0
         _Smoothness("Smoothness", Range(0, 1)) = 0.5
+        [NoScaleOffset] _EmissionMap("Emission", 2D) = "white" {}
+        [HDR] _EmissionColor("Emission", Color) = (0.0, 0.0, 0.0, 0.0)
 
         [Space]
         [KeywordEnum(On, Clip, Dither, Off)] _Shadows("Shadows", Float) = 0
@@ -23,6 +25,10 @@
 
         [Space]
         [Enum(Off, 0, On, 1)] _ZWrite("Z Write", Float) = 1
+
+        [HideInInspector] _MainTex("Texture for Lightmap", 2D) = "white" {}
+		[HideInInspector] _Color("Color for Lightmap", Color) = (0.5, 0.5, 0.5, 1.0)
+
     }
     SubShader
     {
@@ -84,6 +90,25 @@
             #pragma vertex ShadowCasterPassVertex
             #pragma fragment ShadowCasterPassFragment
             #include "ShadowCasterPass.hlsl"
+
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Tags
+            {
+                "LightMode" = "Meta"
+            }
+
+            Cull Off
+
+            HLSLPROGRAM
+
+            #pragma target 3.5
+            #pragma vertex MetaPassVertex
+            #pragma fragment MetaPassFragment
+            #include "MetaPass.hlsl"
 
             ENDHLSL
         }

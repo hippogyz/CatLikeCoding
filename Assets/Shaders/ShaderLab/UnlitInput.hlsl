@@ -43,4 +43,9 @@ float GetSmoothness()
     return 0.0;
 }
 
+float3 GetEmission(float2 uv)
+{
+    return GetBaseColor(uv).rgb;
+}
+
 #endif

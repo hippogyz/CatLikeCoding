@@ -3,6 +3,7 @@
 
 
 TEXTURE2D(_BaseMap);
+TEXTURE2D(_EmissionMap);
 SAMPLER(sampler_BaseMap);
 
 // Unity Per Material
@@ -10,6 +11,7 @@ UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
 	
 	UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
 	UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+    UNITY_DEFINE_INSTANCED_PROP(float4, _EmissionColor)
 	UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
 	UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
 	UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
@@ -43,6 +45,14 @@ float GetMetallic()
 float GetSmoothness()
 {
     return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
+}
+
+float3 GetEmission(float2 uv)
+{
+    float4 base = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _EmissionColor);
+    float4 map = SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, uv);
+
+    return base.rgb * map.rgb;
 }
 
 #endif

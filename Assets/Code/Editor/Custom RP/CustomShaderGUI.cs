@@ -78,6 +78,11 @@ namespace ShaderEditor
         const string SHADOWS_CLIP_KEYWORD = "_SHADOWS_CLIP";
         const string SHADOWS_DITHER_KEYWORD = "_SHADOWS_DITHER";
 
+        const string MAIN_TEX = "_MainTex";
+        const string BASE_MAP = "_BaseMap";
+        const string COLOR = "_Color";
+        const string BASE_COLOR = "_BaseColor";
+
         #endregion
 
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
@@ -89,6 +94,8 @@ namespace ShaderEditor
             editor = materialEditor;
             materials = materialEditor.targets;
             this.properties = properties;
+
+            BakedEmission();
 
             // Preset
             EditorGUILayout.Space();
@@ -104,6 +111,22 @@ namespace ShaderEditor
             if(EditorGUI.EndChangeCheck())
             {
                 SetShadowCasterPass();
+                CopyLightMapData();
+            }
+        }
+
+        private void BakedEmission()
+        {
+            EditorGUI.BeginChangeCheck();
+
+            editor.LightmapEmissionProperty();
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                foreach (Material material in materials)
+                {
+                    material.globalIlluminationFlags &= ~MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+                }
             }
         }
 
@@ -118,6 +141,25 @@ namespace ShaderEditor
             foreach(Material m in materials)
             {
                 m.SetShaderPassEnabled("ShadowCaster", enabled);
+            }
+        }
+
+        private void CopyLightMapData()
+        {
+            MaterialProperty main_tex = FindProperty(MAIN_TEX, properties);
+            MaterialProperty base_map = FindProperty(BASE_MAP, properties);
+
+            if(main_tex != null && base_map != null)
+            {
+                main_tex.textureValue = base_map.textureValue;
+                main_tex.textureScaleAndOffset = base_map.textureScaleAndOffset;
+            }
+
+            MaterialProperty color = FindProperty(COLOR, properties);
+            MaterialProperty base_color = FindProperty(BASE_COLOR, properties);
+            if(color != null && base_color != null)
+            {
+                color.colorValue = base_color.colorValue;
             }
         }
 

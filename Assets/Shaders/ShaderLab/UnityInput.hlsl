@@ -26,6 +26,11 @@ CBUFFER_START(UnityPerDraw)
 	float4 unity_ProbeVolumeSizeInv;
 	float4 unity_ProbeVolumeMin;
 
+	// Meta Pass
+	bool4 unity_MetaFragmentControl;
+	float unity_OneOverOutputBoost;
+	float unity_MaxOutputValue;
+
 CBUFFER_END
 
 float4x4 unity_WorldToPrevObject;
