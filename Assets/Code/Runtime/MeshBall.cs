@@ -58,8 +58,10 @@ namespace Runtime
                     positions[i] = world_matrices[i].GetColumn(3);
 
                 var light_probes = new SphericalHarmonicsL2[SIZE];
-                LightProbes.CalculateInterpolatedLightAndOcclusionProbes(positions, light_probes, null);
+                var occlusion_probes = new Vector4[SIZE];
+                LightProbes.CalculateInterpolatedLightAndOcclusionProbes(positions, light_probes, occlusion_probes);
                 block.CopySHCoefficientArraysFrom(light_probes);
+                block.CopyProbeOcclusionArrayFrom(occlusion_probes);
             }
 
             if(transform.hasChanged)

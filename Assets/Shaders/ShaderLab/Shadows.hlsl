@@ -1,8 +1,6 @@
 #ifndef CUSTOM_SHADOWS_INCLUDED
 #define CUSTOM_SHADOWS_INCLUDED
 
-
-
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Shadow/ShadowSamplingTent.hlsl"
 
 #if defined(_DIRECTIONAL_PCF3)
@@ -19,7 +17,6 @@
 	#define DIRECTIONAL_FILTER_SAMPLES 16
 	#define DIRECTIONAL_FILTER_SETUP SampleShadow_ComputeSamples_Tent_7x7
 #endif
-
 
 
 #define MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT 4
@@ -39,19 +36,27 @@ CBUFFER_START(_CustomShadows)
     float4x4 _DirectionalShadowMatrices[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
 CBUFFER_END
 
+struct ShadowMask
+{
+    bool always;
+    bool distance;
+    float4 shadows;
+};
+
 struct ShadowData
 {
     int cascadeIndex;
     float cascadeBlend;
     float strength;
+    ShadowMask shadowMask;
 };
 
 struct DirectionalShadowData
 {
     float strength;
-    // int tileIndex;
     int tileGroupIndex;
     float normalBias;
+    int shadowMaskChannel;
 };
 
 float FadeShadowStrength(float distance, float scale, float fadeFactor)
@@ -64,6 +69,10 @@ ShadowData GetShadowData(Surface surface)
     ShadowData data;
     data.cascadeBlend = 1.0;
     data.strength = FadeShadowStrength(surface.depth, _ShadowDistanceFade.x, _ShadowDistanceFade.y);
+
+    data.shadowMask.always = false;
+    data.shadowMask.distance = false;
+    data.shadowMask.shadows = 1.0;
 
     int i;
     for(i = 0; i < _CascadeCount; i++)
@@ -134,7 +143,7 @@ float FilterDirectionalShadow(float3 positionSTS)
     #endif
 }
 
-float GetCascadeShadow(DirectionalShadowData directional, int cascadeIndex, Surface surface)
+float GetCascadeShadowInternal(DirectionalShadowData directional, int cascadeIndex, Surface surface)
 {
     float texelSize = _CascadeData[cascadeIndex].y; // eliminate self-shadowing
     float3 normalBias = surface.normal * (directional.normalBias * texelSize); // eliminate wrong shadow in crossing boundary
@@ -146,26 +155,78 @@ float GetCascadeShadow(DirectionalShadowData directional, int cascadeIndex, Surf
     return shadow;
 }
 
+float GetCascadeShadow(DirectionalShadowData directional, ShadowData shadowData, Surface surface)
+{    
+    float shadow = GetCascadeShadowInternal(directional, shadowData.cascadeIndex, surface);
+    if(shadowData.cascadeBlend < 1.0) // blend between different cascade
+    {
+        float blendShadow = GetCascadeShadowInternal(directional, shadowData.cascadeIndex + 1, surface);
+        shadow = lerp(blendShadow, shadow, shadowData.cascadeBlend);
+    }
+
+    return shadow;
+}
+
+float GetBakedShadow(ShadowMask shadowMask, int channel)
+{
+    float shadow = 1.0;
+    // if(shadowMask.always || shadowMask.distance)
+    // {
+        if(channel >= 0) // channel means shadowMask mode is not nessesary for GetBakedShadow
+            shadow = shadowMask.shadows[channel];
+    // }
+    
+    return shadow;
+}
+
+float GetBakedShadowVeryFar(ShadowMask shadowMask, int channel, float directionalStrength)
+{
+    if(shadowMask.always || shadowMask.distance)
+    {
+        return lerp(1.0, GetBakedShadow(shadowMask, channel), directionalStrength);
+    }
+
+    return 1.0;
+}
+
+float MixBakedAndRealtimeShadows(ShadowData shadowData, float shadow, int shadowMaskChannel, float directionalStrength)
+{
+    float baked = GetBakedShadow(shadowData.shadowMask, shadowMaskChannel);
+
+    if(shadowData.shadowMask.always)
+    {
+        shadow = lerp(1.0, shadow, shadowData.strength);
+        shadow = min(baked, shadow);
+        return lerp(1.0, shadow, directionalStrength);
+    }
+
+    if(shadowData.shadowMask.distance)
+    {
+        shadow = lerp(baked, shadow, shadowData.strength);
+        return lerp(1.0, shadow, directionalStrength);
+    }
+    return lerp(1.0, shadow, directionalStrength * shadowData.strength);
+}
+
+
 float GetDirectionalShadowAttenuation(DirectionalShadowData directional, ShadowData shadowData, Surface surface)
 {
     #if !defined(_RECEIVE_SHADOW)
         return 1.0;
     #endif
 
-    if(directional.strength <= 0.0)
+    float shadow;
+    if(directional.strength * shadowData.strength <= 0.0)
     {
-        return 1.0;
+        shadow = GetBakedShadowVeryFar(shadowData.shadowMask, directional.shadowMaskChannel, abs(directional.strength));
+    }
+    else
+    {
+        shadow = GetCascadeShadow(directional, shadowData, surface);
+        shadow = MixBakedAndRealtimeShadows(shadowData, shadow, directional.shadowMaskChannel, directional.strength);
     }
 
-    float shadow = GetCascadeShadow(directional, shadowData.cascadeIndex, surface);
-
-    if(shadowData.cascadeBlend < 1.0)
-    {
-        float blendShadow = GetCascadeShadow(directional, shadowData.cascadeIndex + 1, surface);
-        shadow = lerp(blendShadow, shadow, shadowData.cascadeBlend);
-    }
-
-    return lerp(1.0, shadow, directional.strength); // 1 represents no shadow
+    return shadow; // 1 represents no shadow
 }
 
 #endif

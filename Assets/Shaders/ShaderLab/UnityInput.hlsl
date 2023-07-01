@@ -11,6 +11,9 @@ CBUFFER_START(UnityPerDraw)
 	float4 unity_LightmapST;
 	float4 unity_DynamicLightmapST;
 
+	// ShadowMask
+	float4 unity_ProbesOcclusion;
+
 	// LightProbe
 	float4 unity_SHAr;
 	float4 unity_SHAg;

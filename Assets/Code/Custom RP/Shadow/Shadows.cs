@@ -16,6 +16,18 @@ namespace CustomRP.CustomShadow
         CommandBuffer cmd = new CommandBuffer { name = BUFFER_NAME };
         #endregion
 
+        #region ShadowMask
+        readonly static string[] shadow_mask_keywords =
+        {
+            "_SHADOW_MASK_ALWAYS",
+            "_SHADOW_MASK_DISTANCE"
+        };
+
+        bool use_shadow_mask;
+
+        #endregion
+
+
         #region Directional
 
         const int MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT = 4;
@@ -64,17 +76,36 @@ namespace CustomRP.CustomShadow
             settings = shadowSettings;
 
             shadowed_directional_light_count = 0;
+
+            use_shadow_mask = false;
         }
 
-        public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex)
+        public Vector4 ReserveDirectionalShadows(Light light, int visibleLightIndex)
         {
             bool shadow_count_available = shadowed_directional_light_count < MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT;
             bool light_cast_shadow_available = light.shadows != LightShadows.None && light.shadowStrength > 0;
             bool culling_available = culling_results.GetShadowCasterBounds(visibleLightIndex, out var b);
 
-            if (!(shadow_count_available && light_cast_shadow_available && culling_available))
-                return Vector3.zero;
+            if (!(shadow_count_available && light_cast_shadow_available))// && culling_available))
+                return new Vector4(0, 0, 0, -1);
 
+            float shadow_mask_channel = -1;
+            // use shadow mask
+            var light_baking = light.bakingOutput;
+            if(light_baking.mixedLightingMode == MixedLightingMode.Shadowmask &&
+                light_baking.lightmapBakeType == LightmapBakeType.Mixed)
+            {
+                use_shadow_mask = true;
+                shadow_mask_channel = light_baking.occlusionMaskChannel;
+            }
+
+            // 当阴影非常远时由于剔除把阴影流程关闭了，因此ShadowMask会失效
+            // 这里把shadowStrength反向传进去，并在shader中作abs处理，这样不会影响正常的阴影且不会关闭ShadowMask的效果
+            // 见Shadows.hlsl GetBakedShadowVeryFar的abs(directional.strength)
+            if (!culling_available)
+                return new Vector4(-light.shadowStrength, 0, 0, shadow_mask_channel);
+
+            // 正常阴影流程
             shadowed_directional_lights[shadowed_directional_light_count] = new ShadowedDirectionalLight()
             {
                 visibleLightIndex = visibleLightIndex,
@@ -82,10 +113,11 @@ namespace CustomRP.CustomShadow
                 nearPlaneOffset = light.shadowNearPlane,
             };
 
-            var shadow_data = new Vector3(
+            var shadow_data = new Vector4(
                 light.shadowStrength,
                 settings.directional.CascadeCount * shadowed_directional_light_count,
-                light.shadowNormalBias
+                light.shadowNormalBias,
+                shadow_mask_channel
                 );
 
             shadowed_directional_light_count++;
@@ -96,6 +128,7 @@ namespace CustomRP.CustomShadow
         public void Render()
         {
             RenderDirectionalShadows();
+            SetShadowMask();
         }
 
         public void Cleanup()
@@ -104,7 +137,7 @@ namespace CustomRP.CustomShadow
             ExecuteBuffer();
         }
 
-
+        #region Directional Shadow
         private void RenderDirectionalShadows()
         {
             if(shadowed_directional_light_count == 0)
@@ -208,7 +241,30 @@ namespace CustomRP.CustomShadow
                 cmd.SetGlobalDepthBias(0, 0);
             }
         }
+        #endregion
 
+        #region Shadow Mask
+
+        private void SetShadowMask()
+        {
+            cmd.BeginSample(BUFFER_NAME);
+            var shadow_mask_idx = -1;
+            if(use_shadow_mask)
+            {
+                if (QualitySettings.shadowmaskMode == ShadowmaskMode.Shadowmask)
+                    shadow_mask_idx = 0; // Always
+                else
+                    shadow_mask_idx = 1; // distance
+            }
+
+            SetKeywordArray(shadow_mask_idx, shadow_mask_keywords);
+            cmd.EndSample(BUFFER_NAME);
+            ExecuteBuffer();
+        }
+
+        #endregion
+
+        #region Common
 
         private Vector2 SetTileViewport(int index, int split, float tileSize)
         {
@@ -327,6 +383,9 @@ namespace CustomRP.CustomShadow
                 );
         }
 
+        #endregion
+
+        #region Utils
         private void ExecuteBuffer()
         {
             context.ExecuteCommandBuffer(cmd);
@@ -342,6 +401,7 @@ namespace CustomRP.CustomShadow
                     cmd.DisableShaderKeyword(keywords[i]);
             }
         }
+        #endregion
 
         #region Inner
 

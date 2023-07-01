@@ -98,8 +98,12 @@ namespace CustomRP
             {
                 enableDynamicBatching = useDynamicBatching,
                 enableInstancing = useGPUInstancing,
-                perObjectData = PerObjectData.Lightmaps | PerObjectData.LightProbe
-                    | PerObjectData.LightProbeProxyVolume,
+                perObjectData = PerObjectData.Lightmaps | 
+                                PerObjectData.LightProbe |
+                                PerObjectData.ShadowMask |
+                                PerObjectData.OcclusionProbe |
+                                PerObjectData.LightProbeProxyVolume |
+                                PerObjectData.OcclusionProbeProxyVolume,
 
             };
             drawing_settings.SetShaderPassName(1, lit_shader_tag_id);

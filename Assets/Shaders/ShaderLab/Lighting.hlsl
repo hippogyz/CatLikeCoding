@@ -14,6 +14,7 @@ float3 GetLighting(Surface surface, BRDF brdf, Light light)
 float3 GetLighting(Surface surface, BRDF brdf, GI gi)
 {
     ShadowData shadowData = GetShadowData(surface);
+    shadowData.shadowMask = gi.shadowMask;
     float3 color = gi.diffuse * brdf.diffuse;
 
     int dir_light_count = GetDirectionalLightCount();

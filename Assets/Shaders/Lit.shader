@@ -58,11 +58,14 @@
             #pragma multi_compile _ _DIRECTIONAL_PCF3 _DIRECTIONAL_PCF5 _DIRECTIONAL_PCF7 // Shadow Sample, PCF2 for default
             #pragma multi_compile _ _CASCADE_BLEND_SOFT _CASCADE_BLEND_DITHER // Descade shadow blend, Hard for default
 
+            #pragma multi_compile _ LIGHTMAP_ON
+            #pragma multi_compile _ _SHADOW_MASK_ALWAYS _SHADOW_MASK_DISTANCE
+
+            #pragma multi_compile_instancing
+
             // Debug
             #pragma shader_feature _CASCADE_DEBUG
 
-            #pragma multi_compile _ LIGHTMAP_ON
-            #pragma multi_compile_instancing
             #pragma vertex LitPassVertex
             #pragma fragment LitPassFragment
             #include "LitPass.hlsl"
